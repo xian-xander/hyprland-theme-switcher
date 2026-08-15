@@ -46,7 +46,7 @@ hyprland-theme-switcher/
 ### Automatic Installation
 
 ```bash
-git clone https://github.com/xian-xander/hyprland-theme-switcher.git
+git clone https://github.com/xian-xander/hyprland-theme-switcher
 cd hyprland-theme-switcher
 chmod +x install.sh
 ./install.sh
