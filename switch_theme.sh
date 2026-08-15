@@ -5,10 +5,12 @@
 # ==============================================================================
 
 # -- Configuration --
-# NOTE: User's folder is currently Imagenes, keeping it so it works for them
-WALLPAPER_DIR="$HOME/Pictures/wallpapers"
-if [ ! -d "$WALLPAPER_DIR" ]; then
+if [ -d "$HOME/Pictures" ]; then
+    WALLPAPER_DIR="$HOME/Pictures/wallpapers"
+elif [ -d "$HOME/Imagenes" ]; then
     WALLPAPER_DIR="$HOME/Imagenes/wallpapers"
+else
+    WALLPAPER_DIR="$HOME/Pictures/wallpapers"
 fi
 WALLPAPER_DAEMON="awww"
 CACHE_DIR="$HOME/.cache/theme_thumbnails"
@@ -33,13 +35,19 @@ THEMES=(
     "Steve 3|rgba(757575ff)|rgba(1a1d1fff)|steve_3.jpg"
 )
 
+# Get old state for smooth transitions
+OLD_THEME=""
+if [[ -f "$STATE_FILE" ]]; then
+    OLD_THEME=$(cat "$STATE_FILE")
+fi
+
 # ==============================================================================
 # Step 1: Determine Selected Theme
 # ==============================================================================
 if [[ "$1" == "--restore" ]]; then
     # Restore mode: Read saved state without launching Rofi
-    if [[ -f "$STATE_FILE" ]]; then
-        SELECTED=$(cat "$STATE_FILE")
+    if [[ -n "$OLD_THEME" ]]; then
+        SELECTED="$OLD_THEME"
     else
         SELECTED="${THEMES[0]%%|*}" # Default to first theme
     fi
@@ -124,17 +132,33 @@ EOF
         swaybg -i "$wallpaper" -m fill >/dev/null 2>&1 &
         disown
     elif [[ "$WALLPAPER_DAEMON" == "awww" ]]; then
-        killall swaybg 2>/dev/null
         if [[ "$1" == "--restore" ]]; then
-            # Para el inicio de sesión (--restore), usamos swaybg porque es instantáneo y evita
-            # la pantalla negra de 0.5s mientras arranca el demonio de awww.
+            # Para el inicio de sesión (--restore), usamos swaybg porque es instantáneo
+            killall awww-daemon 2>/dev/null
+            killall swaybg 2>/dev/null
             swaybg -i "$wallpaper" -m fill >/dev/null 2>&1 &
             disown
         else
+            # Preparamos awww si no está corriendo
             if ! pgrep -x "awww-daemon" >/dev/null; then
                 awww-daemon &
                 sleep 0.5
+                # Pre-cargamos la imagen ANTIGUA para que la transición no sea desde negro
+                if [[ -n "$OLD_THEME" ]]; then
+                    for old_entry in "${THEMES[@]}"; do
+                        IFS='|' read -r old_name _ _ old_file <<< "$old_entry"
+                        if [[ "$old_name" == "$OLD_THEME" ]]; then
+                            awww img "$WALLPAPER_DIR/$old_file"
+                            sleep 0.2
+                            break
+                        fi
+                    done
+                fi
+                # Ahora que awww tiene la imagen vieja, matamos swaybg
+                killall swaybg 2>/dev/null
             fi
+            
+            # Lanzamos la transición con awww hacia el nuevo wallpaper
             awww img "$wallpaper" --transition-type wipe --transition-angle 30 --transition-step 200 --transition-fps 60
         fi
     fi

@@ -99,9 +99,12 @@ echo ""
 echo -e "${YELLOW}[4/5]${NC} Installing wallpapers..."
 
 # NOTE: Also updated to English Pictures dir instead of Imagenes just in case, but keeping standard xdg-user-dirs fallback
-WALL_DIR="$HOME/Pictures/wallpapers"
-if [ ! -d "$WALL_DIR" ]; then
-    WALL_DIR="$HOME/Imagenes/wallpapers" # Fallback if Spanish system
+if [ -d "$HOME/Pictures" ]; then
+    WALL_DIR="$HOME/Pictures/wallpapers"
+elif [ -d "$HOME/Imagenes" ]; then
+    WALL_DIR="$HOME/Imagenes/wallpapers"
+else
+    WALL_DIR="$HOME/Pictures/wallpapers" # Default
 fi
 mkdir -p "$WALL_DIR"
 
@@ -111,7 +114,7 @@ for img in "$SCRIPT_DIR/wallpapers/"*.{jpg,png,jpeg,webp}; do
     base="$(basename "$img")"
     if [[ ! -f "$WALL_DIR/$base" ]]; then
         cp "$img" "$WALL_DIR/"
-        ((count++))
+        count=$((count + 1))
     fi
 done
 
@@ -142,7 +145,7 @@ if [[ -n "$im_cmd" ]]; then
         thumb="$CACHE_DIR/$base"
         if [[ ! -f "$thumb" ]]; then
             "$im_cmd" "$img" -thumbnail 400x225 -quality 85 "$thumb" 2>/dev/null &
-            ((thumb_count++))
+            thumb_count=$((thumb_count + 1))
         fi
     done
     wait
