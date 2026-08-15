@@ -5,12 +5,14 @@
 # ==============================================================================
 
 # -- Configuration --
+# NOTE: User's folder is currently Imagenes, keeping it so it works for them
 WALLPAPER_DIR="$HOME/Pictures/wallpapers"
 if [ ! -d "$WALLPAPER_DIR" ]; then
     WALLPAPER_DIR="$HOME/Imagenes/wallpapers"
 fi
 WALLPAPER_DAEMON="awww"
 CACHE_DIR="$HOME/.cache/theme_thumbnails"
+STATE_FILE="$HOME/.cache/current_theme"
 ROFI_THEME="$HOME/.config/rofi/theme_switcher.rasi"
 ROFI_COLORS="$HOME/.config/rofi/colors.rasi"
 
@@ -32,57 +34,68 @@ THEMES=(
 )
 
 # ==============================================================================
-# Step 1: Generate thumbnail cache (only the first time)
+# Step 1: Determine Selected Theme
 # ==============================================================================
-mkdir -p "$CACHE_DIR"
-
-has_imagemagick=false
-if command -v magick &>/dev/null; then
-    has_imagemagick=true
-    im_cmd="magick"
-elif command -v convert &>/dev/null; then
-    has_imagemagick=true
-    im_cmd="convert"
-fi
-
-for entry in "${THEMES[@]}"; do
-    file="${entry##*|}"
-    src="$WALLPAPER_DIR/$file"
-    thumb="$CACHE_DIR/$file"
-
-    if [[ ! -f "$thumb" && "$has_imagemagick" == true && -f "$src" ]]; then
-        "$im_cmd" "$src" -thumbnail 400x225 -quality 85 "$thumb" 2>/dev/null &
-    fi
-done
-wait  # Wait for all thumbnails to generate in parallel
-
-if [[ "$has_imagemagick" == false ]]; then
-    notify-send -u critical "Missing ImageMagick" "Install it with: yay -S imagemagick"
-fi
-
-# ==============================================================================
-# Step 2: Build Rofi list
-# ==============================================================================
-ROFI_INPUT=""
-for entry in "${THEMES[@]}"; do
-    IFS='|' read -r name _active _inactive file <<< "$entry"
-    thumb="$CACHE_DIR/$file"
-
-    if [[ -f "$thumb" ]]; then
-        icon="$thumb"
+if [[ "$1" == "--restore" ]]; then
+    # Restore mode: Read saved state without launching Rofi
+    if [[ -f "$STATE_FILE" ]]; then
+        SELECTED=$(cat "$STATE_FILE")
     else
-        icon="$WALLPAPER_DIR/$file"
+        SELECTED="${THEMES[0]%%|*}" # Default to first theme
+    fi
+else
+    # Interactive mode: Generate thumbnails and launch Rofi
+    mkdir -p "$CACHE_DIR"
+
+    has_imagemagick=false
+    if command -v magick &>/dev/null; then
+        has_imagemagick=true
+        im_cmd="magick"
+    elif command -v convert &>/dev/null; then
+        has_imagemagick=true
+        im_cmd="convert"
     fi
 
-    ROFI_INPUT+="${name}\0icon\x1f${icon}\n"
-done
+    for entry in "${THEMES[@]}"; do
+        file="${entry##*|}"
+        src="$WALLPAPER_DIR/$file"
+        thumb="$CACHE_DIR/$file"
 
-SELECTED=$(echo -en "$ROFI_INPUT" | rofi -dmenu -i -show-icons -theme "$ROFI_THEME" -p ">")
+        if [[ ! -f "$thumb" && "$has_imagemagick" == true && -f "$src" ]]; then
+            "$im_cmd" "$src" -thumbnail 400x225 -quality 85 "$thumb" 2>/dev/null &
+        fi
+    done
+    wait  # Wait for all thumbnails to generate in parallel
+
+    if [[ "$has_imagemagick" == false ]]; then
+        notify-send -u critical "Missing ImageMagick" "Install it with: yay -S imagemagick"
+    fi
+
+    # Build Rofi list
+    ROFI_INPUT=""
+    for entry in "${THEMES[@]}"; do
+        IFS='|' read -r name _active _inactive file <<< "$entry"
+        thumb="$CACHE_DIR/$file"
+
+        if [[ -f "$thumb" ]]; then
+            icon="$thumb"
+        else
+            icon="$WALLPAPER_DIR/$file"
+        fi
+
+        ROFI_INPUT+="${name}\0icon\x1f${icon}\n"
+    done
+
+    SELECTED=$(echo -en "$ROFI_INPUT" | rofi -dmenu -i -show-icons -theme "$ROFI_THEME" -p ">")
+fi
 
 [[ -z "$SELECTED" ]] && exit 0
 
+# Save the current state for next login
+echo "$SELECTED" > "$STATE_FILE"
+
 # ==============================================================================
-# Step 3: Apply selected theme
+# Step 2: Apply selected theme
 # ==============================================================================
 for entry in "${THEMES[@]}"; do
     IFS='|' read -r name active_border inactive_border file <<< "$entry"
@@ -102,7 +115,7 @@ for entry in "${THEMES[@]}"; do
 EOF
 
     # -- Apply border colors in Hyprland --
-    hyprctl eval "hl.config({ general = { ['col.active_border'] = '${active_border}', ['col.inactive_border'] = '${inactive_border}' } })"
+    hyprctl eval "hl.config({ general = { ['col.active_border'] = '${active_border}', ['col.inactive_border'] = '${inactive_border}' } })" >/dev/null 2>&1
 
     # -- Apply wallpaper --
     if [[ "$WALLPAPER_DAEMON" == "swaybg" ]]; then
@@ -111,13 +124,22 @@ EOF
         disown
     elif [[ "$WALLPAPER_DAEMON" == "awww" ]]; then
         killall swaybg 2>/dev/null
-        if ! pgrep -x "awww-daemon" >/dev/null; then
-            awww-daemon &
-            sleep 0.5
+        if [[ "$1" == "--restore" ]]; then
+            # Para el inicio de sesión (--restore), usamos swaybg porque es instantáneo y evita
+            # la pantalla negra de 0.5s mientras arranca el demonio de awww.
+            swaybg -i "$wallpaper" -m fill >/dev/null 2>&1 &
+            disown
+        else
+            if ! pgrep -x "awww-daemon" >/dev/null; then
+                awww-daemon &
+                sleep 0.5
+            fi
+            awww img "$wallpaper" --transition-type wipe --transition-angle 30 --transition-step 200 --transition-fps 60
         fi
-        awww img "$wallpaper" --transition-type wipe --transition-angle 30 --transition-step 200 --transition-fps 60
     fi
 
-    notify-send -t 2000 "Hyprland" "Theme changed to: $name"
+    if [[ "$1" != "--restore" ]]; then
+        notify-send -t 2000 "Hyprland" "Theme changed to: $name"
+    fi
     break
 done
