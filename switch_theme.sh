@@ -107,6 +107,7 @@ for entry in "${THEMES[@]}"; do
     # -- Update Rofi colors --
     active_hex="#${active_border:5:6}"
     inactive_hex="#${inactive_border:5:6}"
+    mkdir -p "$(dirname "$ROFI_COLORS")"
     cat > "$ROFI_COLORS" <<EOF
 * {
     active-border: ${active_hex};

@@ -106,7 +106,7 @@ fi
 mkdir -p "$WALL_DIR"
 
 count=0
-for img in "$SCRIPT_DIR/wallpapers/"*.{jpg,png,jpeg,webp} 2>/dev/null; do
+for img in "$SCRIPT_DIR/wallpapers/"*.{jpg,png,jpeg,webp}; do
     [[ -f "$img" ]] || continue
     base="$(basename "$img")"
     if [[ ! -f "$WALL_DIR/$base" ]]; then
@@ -136,7 +136,7 @@ fi
 
 if [[ -n "$im_cmd" ]]; then
     thumb_count=0
-    for img in "$WALL_DIR"/*.{jpg,png,jpeg,webp} 2>/dev/null; do
+    for img in "$WALL_DIR"/*.{jpg,png,jpeg,webp}; do
         [[ -f "$img" ]] || continue
         base="$(basename "$img")"
         thumb="$CACHE_DIR/$base"
