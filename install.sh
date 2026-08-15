@@ -157,16 +157,43 @@ fi
 echo ""
 
 # ==============================================================================
-# Final Summary
+# Step 6: Inject into Hyprland Config
 # ==============================================================================
+echo -e "${YELLOW}[6/6]${NC} Configuring Hyprland..."
+
+HYPR_LUA="$HOME/.config/hypr/hyprland.lua"
+HYPR_CONF="$HOME/.config/hypr/hyprland.conf"
+
+if [[ -f "$HYPR_LUA" ]]; then
+    if ! grep -q "switch_theme.sh" "$HYPR_LUA"; then
+        echo "" >> "$HYPR_LUA"
+        echo "-- Hyprland Theme Switcher" >> "$HYPR_LUA"
+        echo 'hl.on("hyprland.start", function()' >> "$HYPR_LUA"
+        echo '    hl.exec_cmd("bash ~/.local/bin/switch_theme.sh --restore &")' >> "$HYPR_LUA"
+        echo 'end)' >> "$HYPR_LUA"
+        echo 'hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("bash ~/.local/bin/switch_theme.sh"))' >> "$HYPR_LUA"
+        echo -e "  ${GREEN}✓${NC} Configuration automatically added to hyprland.lua"
+    else
+        echo -e "  ${YELLOW}✓${NC} Configuration already exists in hyprland.lua"
+    fi
+elif [[ -f "$HYPR_CONF" ]]; then
+    if ! grep -q "switch_theme.sh" "$HYPR_CONF"; then
+        echo "" >> "$HYPR_CONF"
+        echo "# Hyprland Theme Switcher" >> "$HYPR_CONF"
+        echo "exec-once = bash ~/.local/bin/switch_theme.sh --restore" >> "$HYPR_CONF"
+        echo 'bind = SUPER, T, exec, bash ~/.local/bin/switch_theme.sh' >> "$HYPR_CONF"
+        echo -e "  ${GREEN}✓${NC} Configuration automatically added to hyprland.conf"
+    else
+        echo -e "  ${YELLOW}✓${NC} Configuration already exists in hyprland.conf"
+    fi
+else
+    echo -e "  ${RED}!${NC} Hyprland config not found. Please add the keybind manually."
+fi
+
+echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║      Installation completed!             ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "Add this keybind to your ${CYAN}hyprland.lua${NC}:"
-echo ""
-echo -e "  ${CYAN}-- Theme selector${NC}"
-echo '  hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("bash ~/.local/bin/switch_theme.sh"))'
-echo ""
-echo -e "Then reload Hyprland and press ${YELLOW}SUPER + T${NC}"
+echo -e "Reload Hyprland and press ${YELLOW}SUPER + T${NC} to start."
 echo ""

@@ -79,9 +79,14 @@ mkdir -p ~/Pictures/wallpapers
 cp wallpapers/* ~/Pictures/wallpapers/
 ```
 
-5. Add this keybind to your Hyprland configuration (`hyprland.lua`):
+5. Add the autostart command and keybind to your Hyprland configuration (`hyprland.lua`):
 ```lua
--- Theme selector
+-- Autostart theme restore
+hl.on("hyprland.start", function()
+    hl.exec_cmd("bash ~/.local/bin/switch_theme.sh --restore &")
+end)
+
+-- Theme selector keybind
 hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("bash ~/.local/bin/switch_theme.sh"))
 ```
 
