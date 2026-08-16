@@ -85,8 +85,12 @@ echo ""
 echo -e "${YELLOW}[3/5]${NC} Installing configs and main script..."
 
 MATUGEN_DIR="$HOME/.config/matugen"
-mkdir -p "$MATUGEN_DIR"
-cp -r "$SCRIPT_DIR/matugen/"* "$MATUGEN_DIR/" 2>/dev/null || true
+mkdir -p "$MATUGEN_DIR/templates"
+cp -r "$SCRIPT_DIR/matugen/templates/"* "$MATUGEN_DIR/templates/" 2>/dev/null || true
+
+# Generate portable config.toml
+sed "s|/home/jorge|$HOME|g" "$SCRIPT_DIR/matugen/config.toml" > "$MATUGEN_DIR/config.toml"
+
 echo -e "  ${GREEN}✓${NC} Matugen templates copied to $MATUGEN_DIR"
 
 BIN_DIR="$HOME/.local/bin"
