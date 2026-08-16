@@ -127,7 +127,7 @@ if [[ -f "$MATUGEN_COLORS" ]]; then
     source "$MATUGEN_COLORS"
     
     # Try standard hyprctl keyword first (for normal hyprland.conf users)
-    if ! hyprctl keyword general:col.active_border "rgba(${ACTIVE_BORDER:1}ff)" 2>/dev/null; then
+    if ! hyprctl keyword general:col.active_border "rgba(${ACTIVE_BORDER:1}ff)" >/dev/null 2>&1; then
         # Fallback to hyprland-lua eval if they use the lua plugin
         hyprctl eval "hl.config({ general = { ['col.active_border'] = 'rgba(${ACTIVE_BORDER:1}ff)', ['col.inactive_border'] = 'rgba(${INACTIVE_BORDER:1}aa)' } })" >/dev/null 2>&1
     else
