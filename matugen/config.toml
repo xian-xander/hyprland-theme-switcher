@@ -1,0 +1,14 @@
+[config]
+wallpaper_set = false
+
+[templates.kitty]
+input_path = "/home/jorge/.config/matugen/templates/kitty-colors.conf"
+output_path = "/home/jorge/.config/kitty/matugen-colors.conf"
+
+[templates.rofi]
+input_path = "/home/jorge/.config/matugen/templates/rofi-colors.rasi"
+output_path = "/home/jorge/.config/rofi/colors.rasi"
+
+[templates.bash]
+input_path = "/home/jorge/.config/matugen/templates/bash-colors.sh"
+output_path = "/home/jorge/.cache/theme_thumbnails/matugen_colors.sh"

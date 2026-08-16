@@ -25,8 +25,8 @@ echo -e "${NC}"
 # ==============================================================================
 echo -e "${YELLOW}[1/5]${NC} Checking dependencies..."
 
-DEPS=("rofi" "magick|convert" "awww" "notify-send" "hyprctl")
-NAMES=("rofi-wayland" "imagemagick" "awww" "libnotify" "hyprland")
+DEPS=("rofi" "magick|convert" "awww" "notify-send" "hyprctl" "matugen")
+NAMES=("rofi-wayland" "imagemagick" "awww" "libnotify" "hyprland" "matugen-bin")
 MISSING=()
 
 for i in "${!DEPS[@]}"; do
@@ -80,9 +80,14 @@ echo -e "  ${GREEN}✓${NC} Files copied to $ROFI_DIR"
 echo ""
 
 # ==============================================================================
-# Step 3: Install main script
+# Step 3: Install Matugen config and main script
 # ==============================================================================
-echo -e "${YELLOW}[3/5]${NC} Installing main script..."
+echo -e "${YELLOW}[3/5]${NC} Installing configs and main script..."
+
+MATUGEN_DIR="$HOME/.config/matugen"
+mkdir -p "$MATUGEN_DIR"
+cp -r "$SCRIPT_DIR/matugen/"* "$MATUGEN_DIR/" 2>/dev/null || true
+echo -e "  ${GREEN}✓${NC} Matugen templates copied to $MATUGEN_DIR"
 
 BIN_DIR="$HOME/.local/bin"
 mkdir -p "$BIN_DIR"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# Hyprland Theme Switcher (Rofi + awww)
+# Hyprland Theme Switcher (Rofi + awww + Matugen)
 # ==============================================================================
 
 # -- Configuration --
@@ -14,42 +14,27 @@ else
 fi
 WALLPAPER_DAEMON="awww"
 CACHE_DIR="$HOME/.cache/theme_thumbnails"
-STATE_FILE="$HOME/.cache/current_theme"
+STATE_FILE="$HOME/.cache/current_wallpaper"
 ROFI_THEME="$HOME/.config/rofi/theme_switcher.rasi"
-ROFI_COLORS="$HOME/.config/rofi/colors.rasi"
-
-# -- Theme Definition --
-# Format: "Name|rgba(active)|rgba(inactive)|wallpaper_file"
-THEMES=(
-    "Japan Night|rgba(4585abff)|rgba(01012bff)|japan_night.jpg"
-    "Arch Hacker|rgba(00e5ffff)|rgba(002244ff)|arch_hacker.png"
-    "Arch Gris|rgba(aaaaaaff)|rgba(333333ff)|arch_gris.png"
-    "Pink Lake|rgba(ff66b2ff)|rgba(33001aff)|pink_lake.jpg"
-    "Aboodi|rgba(5d8a82ff)|rgba(1a2226ff)|aboodi.jpg"
-    "Chlouk|rgba(8c8279ff)|rgba(26221eff)|chlouk.jpg"
-    "Israel Becker|rgba(517b96ff)|rgba(1e2226ff)|israel_becker.jpg"
-    "John Callery|rgba(4a7852ff)|rgba(1e241dff)|john_callery.jpg"
-    "Rinoadamo|rgba(3d542dff)|rgba(242123ff)|rinoadamo.jpg"
-    "Steve 1|rgba(5a4278ff)|rgba(222222ff)|steve_1.jpg"
-    "Steve 2|rgba(6b3d56ff)|rgba(26231eff)|steve_2.jpg"
-    "Steve 3|rgba(757575ff)|rgba(1a1d1fff)|steve_3.jpg"
-)
+MATUGEN_COLORS="$HOME/.cache/theme_thumbnails/matugen_colors.sh"
 
 # Get old state for smooth transitions
-OLD_THEME=""
+OLD_WALLPAPER=""
 if [[ -f "$STATE_FILE" ]]; then
-    OLD_THEME=$(cat "$STATE_FILE")
+    OLD_WALLPAPER=$(cat "$STATE_FILE")
 fi
 
 # ==============================================================================
-# Step 1: Determine Selected Theme
+# Step 1: Determine Selected Wallpaper
 # ==============================================================================
 if [[ "$1" == "--restore" ]]; then
     # Restore mode: Read saved state without launching Rofi
-    if [[ -n "$OLD_THEME" ]]; then
-        SELECTED="$OLD_THEME"
+    if [[ -n "$OLD_WALLPAPER" && -f "$OLD_WALLPAPER" ]]; then
+        wallpaper="$OLD_WALLPAPER"
     else
-        SELECTED="${THEMES[0]%%|*}" # Default to first theme
+        # Default to first wallpaper in directory
+        wallpaper=$(find "$WALLPAPER_DIR" -type f \( -iname \*.jpg -o -iname \*.png -o -iname \*.webp \) | head -n 1)
+        [[ -z "$wallpaper" ]] && exit 1
     fi
 else
     # Interactive mode: Generate thumbnails and launch Rofi
@@ -64,14 +49,28 @@ else
         im_cmd="convert"
     fi
 
-    for entry in "${THEMES[@]}"; do
-        file="${entry##*|}"
-        src="$WALLPAPER_DIR/$file"
+    ROFI_INPUT=""
+    for img in "$WALLPAPER_DIR"/*.{jpg,png,jpeg,webp}; do
+        [[ -f "$img" ]] || continue
+        
+        file="$(basename "$img")"
+        name="${file%.*}" # Remove extension for display name
+        # Capitalize and replace underscores with spaces
+        name="$(echo "$name" | tr '_' ' ' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')"
+        
         thumb="$CACHE_DIR/$file"
 
-        if [[ ! -f "$thumb" && "$has_imagemagick" == true && -f "$src" ]]; then
-            "$im_cmd" "$src" -thumbnail 400x225 -quality 85 "$thumb" 2>/dev/null &
+        if [[ ! -f "$thumb" && "$has_imagemagick" == true ]]; then
+            "$im_cmd" "$img" -thumbnail 400x225 -quality 85 "$thumb" 2>/dev/null &
         fi
+        
+        if [[ -f "$thumb" ]]; then
+            icon="$thumb"
+        else
+            icon="$img"
+        fi
+
+        ROFI_INPUT+="${name}\0icon\x1f${icon}\0info\x1f${img}\n"
     done
     wait  # Wait for all thumbnails to generate in parallel
 
@@ -79,92 +78,90 @@ else
         notify-send -u critical "Missing ImageMagick" "Install it with: yay -S imagemagick"
     fi
 
-    # Build Rofi list
-    ROFI_INPUT=""
-    for entry in "${THEMES[@]}"; do
-        IFS='|' read -r name _active _inactive file <<< "$entry"
-        thumb="$CACHE_DIR/$file"
+    # Launch Rofi and extract the selected file path (using info field)
+    # Note: Rofi returns the 'info' field if requested, but standard dmenu just returns the name.
+    # To reliably map back to the file without complex Rofi formatting, we'll parse the output.
+    # Since we can't easily extract info from simple rofi dmenu, we map the name back:
+    
+    SELECTED_NAME=$(echo -en "$ROFI_INPUT" | rofi -dmenu -i -show-icons -theme "$ROFI_THEME" -p ">")
+    [[ -z "$SELECTED_NAME" ]] && exit 0
 
-        if [[ -f "$thumb" ]]; then
-            icon="$thumb"
-        else
-            icon="$WALLPAPER_DIR/$file"
+    # Find the corresponding file
+    wallpaper=""
+    for img in "$WALLPAPER_DIR"/*.{jpg,png,jpeg,webp}; do
+        [[ -f "$img" ]] || continue
+        file="$(basename "$img")"
+        name="${file%.*}"
+        name="$(echo "$name" | tr '_' ' ' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')"
+        if [[ "$name" == "$SELECTED_NAME" ]]; then
+            wallpaper="$img"
+            break
         fi
-
-        ROFI_INPUT+="${name}\0icon\x1f${icon}\n"
     done
-
-    SELECTED=$(echo -en "$ROFI_INPUT" | rofi -dmenu -i -show-icons -theme "$ROFI_THEME" -p ">")
+    
+    [[ -z "$wallpaper" ]] && exit 1
 fi
 
-[[ -z "$SELECTED" ]] && exit 0
-
 # Save the current state for next login
-echo "$SELECTED" > "$STATE_FILE"
+echo "$wallpaper" > "$STATE_FILE"
 
 # ==============================================================================
-# Step 2: Apply selected theme
+# Step 2: Generate Colors with Matugen
 # ==============================================================================
-for entry in "${THEMES[@]}"; do
-    IFS='|' read -r name active_border inactive_border file <<< "$entry"
+if command -v matugen &>/dev/null; then
+    matugen image "$wallpaper" --prefer darkness
+else
+    notify-send -u critical "Missing Matugen" "Please install matugen to generate dynamic colors"
+    # Fallback default colors if Matugen is missing
+    mkdir -p "$(dirname "$MATUGEN_COLORS")"
+    echo 'ACTIVE_BORDER="rgba(00e5ffff)"' > "$MATUGEN_COLORS"
+    echo 'INACTIVE_BORDER="rgba(002244ff)"' >> "$MATUGEN_COLORS"
+fi
 
-    [[ "$name" != "$SELECTED" ]] && continue
+# ==============================================================================
+# Step 3: Apply Theme
+# ==============================================================================
 
-    wallpaper="$WALLPAPER_DIR/$file"
+# -- Apply border colors in Hyprland --
+if [[ -f "$MATUGEN_COLORS" ]]; then
+    source "$MATUGEN_COLORS"
+    hyprctl eval "hl.config({ general = { ['col.active_border'] = 'rgba(${ACTIVE_BORDER:1}ff)', ['col.inactive_border'] = 'rgba(${INACTIVE_BORDER:1}aa)' } })" >/dev/null 2>&1
+fi
 
-    # -- Update Rofi colors --
-    active_hex="#${active_border:5:6}"
-    inactive_hex="#${inactive_border:5:6}"
-    mkdir -p "$(dirname "$ROFI_COLORS")"
-    cat > "$ROFI_COLORS" <<EOF
-* {
-    active-border: ${active_hex};
-    inactive-border: ${inactive_hex};
-}
-EOF
+# -- Apply Kitty colors --
+killall -USR1 kitty 2>/dev/null
 
-    # -- Apply border colors in Hyprland --
-    hyprctl eval "hl.config({ general = { ['col.active_border'] = '${active_border}', ['col.inactive_border'] = '${inactive_border}' } })" >/dev/null 2>&1
-
-    # -- Apply wallpaper --
-    if [[ "$WALLPAPER_DAEMON" == "swaybg" ]]; then
+# -- Apply wallpaper --
+if [[ "$WALLPAPER_DAEMON" == "swaybg" ]]; then
+    killall swaybg 2>/dev/null
+    swaybg -i "$wallpaper" -m fill >/dev/null 2>&1 &
+    disown
+elif [[ "$WALLPAPER_DAEMON" == "awww" ]]; then
+    if [[ "$1" == "--restore" ]]; then
+        # Para el inicio de sesión (--restore), usamos swaybg porque es instantáneo
+        killall awww-daemon 2>/dev/null
         killall swaybg 2>/dev/null
         swaybg -i "$wallpaper" -m fill >/dev/null 2>&1 &
         disown
-    elif [[ "$WALLPAPER_DAEMON" == "awww" ]]; then
-        if [[ "$1" == "--restore" ]]; then
-            # Para el inicio de sesión (--restore), usamos swaybg porque es instantáneo
-            killall awww-daemon 2>/dev/null
-            killall swaybg 2>/dev/null
-            swaybg -i "$wallpaper" -m fill >/dev/null 2>&1 &
-            disown
-        else
-            # Preparamos awww si no está corriendo
-            if ! pgrep -x "awww-daemon" >/dev/null; then
-                awww-daemon &
-                sleep 0.5
-                # Pre-cargamos la imagen ANTIGUA para que la transición no sea desde negro
-                if [[ -n "$OLD_THEME" ]]; then
-                    for old_entry in "${THEMES[@]}"; do
-                        IFS='|' read -r old_name _ _ old_file <<< "$old_entry"
-                        if [[ "$old_name" == "$OLD_THEME" ]]; then
-                            awww img "$WALLPAPER_DIR/$old_file"
-                            sleep 0.2
-                            break
-                        fi
-                    done
-                fi
-                # Ahora que awww tiene la imagen vieja, matamos swaybg
-                killall swaybg 2>/dev/null
+    else
+        # Preparamos awww si no está corriendo
+        if ! pgrep -x "awww-daemon" >/dev/null; then
+            awww-daemon &
+            sleep 0.5
+            # Pre-cargamos la imagen ANTIGUA para que la transición no sea desde negro
+            if [[ -n "$OLD_WALLPAPER" && -f "$OLD_WALLPAPER" ]]; then
+                awww img "$OLD_WALLPAPER"
+                sleep 0.2
             fi
-            
-            # Lanzamos la transición con awww hacia el nuevo wallpaper
-            awww img "$wallpaper" --transition-type wipe --transition-angle 30 --transition-step 200 --transition-fps 60
+            # Ahora que awww tiene la imagen vieja, matamos swaybg
+            killall swaybg 2>/dev/null
         fi
+        
+        # Lanzamos la transición con awww hacia el nuevo wallpaper
+        awww img "$wallpaper" --transition-type wipe --transition-angle 30 --transition-step 200 --transition-fps 60
     fi
+fi
 
-    if [[ "$1" != "--restore" ]]; then
-        notify-send -t 2000 "Hyprland" "Theme changed to: $name"
-    fi
-    break
-done
+if [[ "$1" != "--restore" ]]; then
+    notify-send -t 2000 "Theme Switcher" "Applied colors for $(basename "$wallpaper")"
+fi

@@ -1,0 +1,4 @@
+* {
+    active-border: {{colors.primary.default.hex}};
+    inactive-border: {{colors.surface_variant.default.hex}};
+}
