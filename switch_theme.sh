@@ -64,7 +64,7 @@ else
             icon="$img"
         fi
 
-        ROFI_INPUT+="${name}\0icon\x1f${icon}\0info\x1f${img}\n"
+        ROFI_INPUT+="${name}\0icon\x1f${icon}\n"
     done
     wait  # Wait for all thumbnails to generate in parallel
 
