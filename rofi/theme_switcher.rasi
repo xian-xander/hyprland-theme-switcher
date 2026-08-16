@@ -7,8 +7,8 @@
 }
 
 window {
-    width:            1400px;
-    height:           480px;
+    width:            75%;
+    height:           45%;
     background-color: rgba(10, 10, 15, 0.88);
     border:           2px;
     border-color:     @active-border;
