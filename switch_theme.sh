@@ -5,13 +5,7 @@
 # ==============================================================================
 
 # -- Configuration --
-if [ -d "$HOME/Pictures" ]; then
-    WALLPAPER_DIR="$HOME/Pictures/wallpapers"
-elif [ -d "$HOME/Imagenes" ]; then
-    WALLPAPER_DIR="$HOME/Imagenes/wallpapers"
-else
-    WALLPAPER_DIR="$HOME/Pictures/wallpapers"
-fi
+WALLPAPER_DIR="$HOME/Pictures/wallpapers"
 WALLPAPER_DAEMON="awww"
 CACHE_DIR="$HOME/.cache/theme_thumbnails"
 STATE_FILE="$HOME/.cache/current_wallpaper"
