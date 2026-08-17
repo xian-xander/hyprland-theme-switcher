@@ -8,7 +8,7 @@
 
 window {
     width:            1100px;
-    height:           600px;
+    height:           380px;
     background-color: rgba(10, 10, 15, 0.88);
     border:           2px;
     border-color:     @active-border;
@@ -43,7 +43,7 @@ entry {
 
 listview {
     columns:      4;
-    lines:        2;
+    lines:        1;
     spacing:      15px;
     fixed-columns: true;
     fixed-height: true;
